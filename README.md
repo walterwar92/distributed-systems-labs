@@ -10,6 +10,7 @@
 |---|---|---|
 | [`lab1_canonical/`](lab1_canonical/) | Классификация ДУЧП 2-го порядка и приведение к каноническому виду (задания A, B, C) | `report/otchet.pdf`, `ОТЧЁТ.docx` |
 | [`lab2_wave/`](lab2_wave/) | Одномерное волновое уравнение: метод характеристик на полупрямой и функция Грина (задания А, Б) | `report/otchet2.pdf` |
+| [`lab3/`](lab3/) | Практическая 3 — задание ещё не добавлено | `report/otchet3.pdf` |
 
 Новая работа — новая папка `labN_<тема>/` с тем же устройством: свой пакет с расчётами,
 `tests/`, `README.md`, `report/` с `.tex` и `figures/`.
@@ -37,6 +38,7 @@
 │   ├── tests/             22 теста
 │   ├── report/            otchet2.tex → otchet2.pdf, figures/
 │   └── app.py, task_a.py, task_b.py, make_figures.py, README.md
+├── lab3/                  практическая 3 (заготовка: tests/, report/figures/)
 ├── notes/                 конспекты курса
 └── tools/                 pde.py — проверка на sympy
 ```
