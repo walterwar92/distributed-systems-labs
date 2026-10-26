@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+
+# LaTeX build artifacts
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.toc
+*.xdv
+*.synctex.gz
+
+# Windows shortcuts
+*.lnk
+
+# Third-party course materials (copyrighted: lectures, textbook)
+Презентации и теория/

@@ -1,0 +1,1268 @@
+<title>Классификатор ДУЧП 2-го порядка</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+
+<style>
+  /* Палитра типов проверена валидатором: полоса светлоты, цветность,
+     различимость при протанопии/дейтеранопии и контраст к фону — PASS. */
+  :root {
+    --ground: #FCFCFB;
+    --panel: #FFFFFF;
+    --sunken: #F4F4F0;
+    --ink: #1C1C1A;
+    --ink-soft: #6B6B66;
+    --ink-faint: #92928B;
+    --line: #E4E4DF;
+    --line-strong: #D2D2CB;
+
+    --hyp: #3B5BDB;
+    --par: #B5700C;
+    --ell: #0D9488;
+    --hyp-fill: #DDE3F8;
+    --par-fill: #F5E7D2;
+    --ell-fill: #D6EDEA;
+
+    --shadow: 0 1px 2px rgba(28, 28, 26, .06), 0 8px 24px rgba(28, 28, 26, .05);
+    --radius: 10px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #1A1A19;
+      --panel: #232320;
+      --sunken: #14140F;
+      --ink: #EDEDE8;
+      --ink-soft: #9A9A93;
+      --ink-faint: #77776F;
+      --line: #33332F;
+      --line-strong: #45453F;
+
+      --hyp: #5C7CFA;
+      --par: #BE8524;
+      --ell: #2BA697;
+      --hyp-fill: #262B44;
+      --par-fill: #37301F;
+      --ell-fill: #17322F;
+
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .3);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #1A1A19;
+    --panel: #232320;
+    --sunken: #14140F;
+    --ink: #EDEDE8;
+    --ink-soft: #9A9A93;
+    --ink-faint: #77776F;
+    --line: #33332F;
+    --line-strong: #45453F;
+
+    --hyp: #5C7CFA;
+    --par: #BE8524;
+    --ell: #2BA697;
+    --hyp-fill: #262B44;
+    --par-fill: #37301F;
+    --ell-fill: #17322F;
+
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .3);
+  }
+
+  * { box-sizing: border-box; }
+
+  /* Вкладки гасятся атрибутом hidden, но .cols задаёт display:grid,
+     который его перебивает. Без этой строки открытыми оказываются сразу две. */
+  [hidden] { display: none !important; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, Segoe UI, sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 28px 56px;
+  }
+
+  header { margin-bottom: 22px; }
+
+  h1 {
+    font-family: "IBM Plex Serif", Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(21px, 3.4vw, 29px);
+    line-height: 1.2;
+    margin: 0 0 6px;
+    text-wrap: balance;
+    letter-spacing: -.01em;
+  }
+
+  .lede {
+    margin: 0;
+    color: var(--ink-soft);
+    max-width: 64ch;
+  }
+
+  .eq-display {
+    margin-top: 14px;
+    padding: 12px 16px;
+    background: var(--sunken);
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 14px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin: 22px 0 18px;
+    padding: 4px;
+    background: var(--sunken);
+    border-radius: var(--radius);
+    width: fit-content;
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .tab {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--ink-soft);
+    font: inherit;
+    font-weight: 500;
+    padding: 7px 15px;
+    border-radius: 7px;
+    cursor: pointer;
+  }
+  .tab[aria-selected="true"] {
+    background: var(--panel);
+    color: var(--ink);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .08);
+  }
+  .tab:focus-visible, .preset:focus-visible, input:focus-visible, select:focus-visible {
+    outline: 2px solid var(--hyp);
+    outline-offset: 2px;
+  }
+
+  .cols {
+    display: grid;
+    grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 800px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: var(--shadow);
+  }
+
+  .card + .card { margin-top: 16px; }
+
+  h2 {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 14px;
+  }
+
+  .coef-row {
+    display: grid;
+    grid-template-columns: 62px minmax(0, 1fr) 78px;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .coef-row label {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+
+  input[type="range"] { width: 100%; accent-color: var(--hyp); min-width: 0; }
+
+  input[type="number"], input[type="text"], select {
+    width: 100%;
+    min-width: 0;
+    padding: 6px 8px;
+    border: 1px solid var(--line-strong);
+    border-radius: 6px;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .expr-row {
+    display: grid;
+    grid-template-columns: 62px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; }
+  .preset {
+    appearance: none;
+    border: 1px solid var(--line-strong);
+    background: var(--ground);
+    color: var(--ink-soft);
+    font: inherit;
+    font-size: 12.5px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .preset:hover { border-color: var(--hyp); color: var(--hyp); }
+
+  .verdict {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 13px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 14px;
+    border: 1.5px solid;
+  }
+  .badge::before {
+    content: "";
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .badge.hyperbolic { color: var(--hyp); background: var(--hyp-fill); border-color: var(--hyp); }
+  .badge.parabolic  { color: var(--par); background: var(--par-fill); border-color: var(--par); }
+  .badge.elliptic   { color: var(--ell); background: var(--ell-fill); border-color: var(--ell); }
+  .badge.mixed      { color: var(--ink-soft); background: var(--sunken); border-color: var(--line-strong); }
+
+  .disc {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+  }
+
+  dl.facts { margin: 16px 0 0; display: grid; gap: 0; }
+  dl.facts > div {
+    display: grid;
+    grid-template-columns: 132px minmax(0, 1fr);
+    gap: 12px;
+    padding: 9px 0;
+    border-top: 1px solid var(--line);
+  }
+  @media (max-width: 540px) {
+    dl.facts > div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  }
+  dl.facts dt { color: var(--ink-faint); font-size: 12.5px; }
+  dl.facts dd {
+    margin: 0;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+    overflow-x: auto;
+  }
+
+  .canonical {
+    margin-top: 16px;
+    padding: 14px 16px;
+    border-radius: var(--radius);
+    background: var(--sunken);
+    border: 1px solid var(--line);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 15px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .matrix-grid { display: grid; gap: 6px; margin-bottom: 12px; }
+  .matrix-grid .mrow { display: grid; gap: 6px; }
+
+  table.steps { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.steps td {
+    padding: 7px 0;
+    border-top: 1px solid var(--line);
+    vertical-align: top;
+  }
+  table.steps td:first-child {
+    width: 26px;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  table.steps td:last-child { font-family: "IBM Plex Mono", monospace; }
+
+  .map-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  canvas { width: 100%; height: auto; display: block; border-radius: 8px; cursor: crosshair; }
+
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; font-size: 12.5px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-soft); }
+  .swatch { width: 13px; height: 13px; border-radius: 3px; border: 1.5px solid; }
+  .swatch.hyperbolic { background: var(--hyp-fill); border-color: var(--hyp); }
+  .swatch.parabolic  { background: var(--par-fill); border-color: var(--par); }
+  .swatch.elliptic   { background: var(--ell-fill); border-color: var(--ell); }
+
+  .probe {
+    margin-top: 10px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .err { color: var(--par); font-size: 12.5px; margin-top: 8px; }
+  .hint { color: var(--ink-faint); font-size: 12px; margin-top: 10px; }
+  footer { margin-top: 34px; color: var(--ink-faint); font-size: 12px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Классификатор ДУЧП 2-го порядка</h1>
+    <p class="lede">
+      Меняйте коэффициенты — тип уравнения, характеристики и замена переменных
+      пересчитываются сразу. Для переменных коэффициентов строится карта областей,
+      в которых тип сохраняется.
+    </p>
+    <div class="eq-display" id="eqDisplay"></div>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-const" aria-selected="true">Две переменные</button>
+    <button class="tab" role="tab" id="tab-var" aria-selected="false">Переменные коэффициенты</button>
+    <button class="tab" role="tab" id="tab-n" aria-selected="false">n переменных</button>
+  </div>
+
+  <!-- ---------- режим 1: постоянные коэффициенты ---------- -->
+  <section class="cols" id="pane-const">
+    <div>
+      <div class="card">
+        <h2>Коэффициенты</h2>
+        <div class="coef-row">
+          <label for="c-a11">a₁₁</label>
+          <input type="range" id="c-a11" min="-5" max="5" step="0.25" value="1">
+          <input type="number" id="n-a11" step="0.25" value="1">
+        </div>
+        <div class="coef-row">
+          <label for="c-a12">a₁₂</label>
+          <input type="range" id="c-a12" min="-5" max="5" step="0.25" value="0">
+          <input type="number" id="n-a12" step="0.25" value="0">
+        </div>
+        <div class="coef-row">
+          <label for="c-a22">a₂₂</label>
+          <input type="range" id="c-a22" min="-5" max="5" step="0.25" value="-1">
+          <input type="number" id="n-a22" step="0.25" value="-1">
+        </div>
+        <p class="hint">Уравнение: a₁₁·u<sub>xx</sub> + 2a₁₂·u<sub>xy</sub> + a₂₂·u<sub>yy</sub> + F = 0</p>
+      </div>
+
+      <div class="card">
+        <h2>Готовые примеры</h2>
+        <div class="presets" id="presetsConst"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Результат</h2>
+        <div class="verdict">
+          <span class="badge" id="constBadge">—</span>
+          <span class="disc" id="constDisc"></span>
+        </div>
+        <dl class="facts" id="constFacts"></dl>
+        <div class="canonical" id="constCanonical"></div>
+      </div>
+
+      <div class="card">
+        <h2>Как это получено</h2>
+        <table class="steps"><tbody id="constSteps"></tbody></table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- режим 2: переменные коэффициенты ---------- -->
+  <section class="cols" id="pane-var" hidden>
+    <div>
+      <div class="card">
+        <h2>Коэффициенты как функции x, y</h2>
+        <div class="expr-row">
+          <label for="e-a11">a₁₁</label>
+          <input type="text" id="e-a11" value="y" spellcheck="false">
+        </div>
+        <div class="expr-row">
+          <label for="e-a12">a₁₂</label>
+          <input type="text" id="e-a12" value="0" spellcheck="false">
+        </div>
+        <div class="expr-row">
+          <label for="e-a22">a₂₂</label>
+          <input type="text" id="e-a22" value="1" spellcheck="false">
+        </div>
+        <p class="hint">
+          Допустимо: x, y, числа, + − * / ^, скобки, sqrt, sin, cos, exp, abs.
+        </p>
+        <div class="err" id="varErr" hidden></div>
+      </div>
+
+      <div class="card">
+        <h2>Готовые примеры</h2>
+        <div class="presets" id="presetsVar"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="map-head">
+          <h2 style="margin:0">Карта областей</h2>
+          <span class="disc" id="varDisc"></span>
+        </div>
+        <canvas id="mapCanvas" width="760" height="560" role="img"
+                aria-label="Карта областей, в которых уравнение сохраняет свой тип"></canvas>
+        <div class="legend">
+          <span><i class="swatch hyperbolic"></i>гиперболический (D &gt; 0)</span>
+          <span><i class="swatch parabolic"></i>параболический (D = 0)</span>
+          <span><i class="swatch elliptic"></i>эллиптический (D &lt; 0)</span>
+        </div>
+        <div class="probe" id="probe">Наведите курсор на карту, чтобы увидеть тип в точке.</div>
+      </div>
+
+      <div class="card">
+        <h2>Разбор в выбранной точке</h2>
+        <div class="verdict">
+          <span class="badge" id="varBadge">—</span>
+          <span class="disc" id="varPointDisc"></span>
+        </div>
+        <dl class="facts" id="varFacts"></dl>
+        <div class="canonical" id="varCanonical"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- режим 3: n переменных ---------- -->
+  <section class="cols" id="pane-n" hidden>
+    <div>
+      <div class="card">
+        <h2>Матрица a<sub>ij</sub></h2>
+        <div class="expr-row" style="grid-template-columns: 62px minmax(0,1fr)">
+          <label for="nSize">n</label>
+          <select id="nSize">
+            <option>2</option><option selected>3</option><option>4</option><option>5</option>
+          </select>
+        </div>
+        <div class="matrix-grid" id="matrixGrid"></div>
+        <p class="hint">
+          Q(λ) = Σ a<sub>ij</sub>λ<sub>i</sub>λ<sub>j</sub>. Матрица симметризуется:
+          коэффициент при u<sub>xy</sub> равен 2a₁₂.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>Готовые примеры</h2>
+        <div class="presets" id="presetsN"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Результат</h2>
+        <div class="verdict">
+          <span class="badge" id="nBadge">—</span>
+          <span class="disc" id="nSign"></span>
+        </div>
+        <dl class="facts" id="nFacts"></dl>
+        <div class="canonical" id="nCanonical"></div>
+      </div>
+
+      <div class="card">
+        <h2>Замена переменных ξ = P<sup>T</sup>x</h2>
+        <table class="steps"><tbody id="nSubst"></tbody></table>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Классификация по характеристической квадратичной форме и по дискриминанту
+    D = a₁₂² − a₁₁a₂₂. Метод Лагранжа, обращение матриц и метод характеристик
+    реализованы вручную — готовые решатели не используются.
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+/* ============================ точная арифметика ============================ */
+function bgcd(a, b) { a = a < 0n ? -a : a; b = b < 0n ? -b : b;
+  while (b) { const t = a % b; a = b; b = t; } return a; }
+
+class Fr {
+  constructor(n, d = 1n) {
+    n = BigInt(n); d = BigInt(d);
+    if (d === 0n) throw new Error("деление на ноль");
+    if (d < 0n) { n = -n; d = -d; }
+    const g = bgcd(n, d) || 1n;
+    this.n = n / g; this.d = d / g;
+  }
+  static zero() { return new Fr(0n); }
+  static one() { return new Fr(1n); }
+  static from(value) {
+    if (value instanceof Fr) return value;
+    const num = Number(value);
+    if (!isFinite(num)) throw new Error("не число");
+    if (Number.isInteger(num)) return new Fr(BigInt(num));
+    // конечная десятичная дробь -> точная дробь
+    const text = num.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
+    const dot = text.indexOf(".");
+    if (dot < 0) return new Fr(BigInt(text));
+    const places = text.length - dot - 1;
+    return new Fr(BigInt(text.replace(".", "")), 10n ** BigInt(places));
+  }
+  add(o) { return new Fr(this.n * o.d + o.n * this.d, this.d * o.d); }
+  sub(o) { return new Fr(this.n * o.d - o.n * this.d, this.d * o.d); }
+  mul(o) { return new Fr(this.n * o.n, this.d * o.d); }
+  div(o) { if (o.n === 0n) throw new Error("деление на ноль"); return new Fr(this.n * o.d, this.d * o.n); }
+  neg() { return new Fr(-this.n, this.d); }
+  isZero() { return this.n === 0n; }
+  sign() { return this.n > 0n ? 1 : this.n < 0n ? -1 : 0; }
+  toString() { return this.d === 1n ? `${this.n}` : `${this.n}/${this.d}`; }
+}
+
+const eye = n => Array.from({ length: n }, (_, i) =>
+  Array.from({ length: n }, (_, j) => (i === j ? Fr.one() : Fr.zero())));
+
+function matmul(a, b) {
+  const rows = a.length, inner = b.length, cols = b[0].length;
+  const out = [];
+  for (let i = 0; i < rows; i++) {
+    const row = [];
+    for (let j = 0; j < cols; j++) {
+      let acc = Fr.zero();
+      for (let k = 0; k < inner; k++) acc = acc.add(a[i][k].mul(b[k][j]));
+      row.push(acc);
+    }
+    out.push(row);
+  }
+  return out;
+}
+
+const transpose = a => a[0].map((_, j) => a.map(row => row[j]));
+
+function inverse(a) {
+  const n = a.length;
+  const w = a.map((row, i) => [...row, ...eye(n)[i]]);
+  for (let col = 0; col < n; col++) {
+    let pivot = -1;
+    for (let r = col; r < n; r++) if (!w[r][col].isZero()) { pivot = r; break; }
+    if (pivot < 0) throw new Error("матрица вырождена");
+    [w[col], w[pivot]] = [w[pivot], w[col]];
+    const head = w[col][col];
+    w[col] = w[col].map(v => v.div(head));
+    for (let r = 0; r < n; r++) {
+      if (r === col || w[r][col].isZero()) continue;
+      const f = w[r][col];
+      w[r] = w[r].map((v, k) => v.sub(f.mul(w[col][k])));
+    }
+  }
+  return w.map(row => row.slice(n));
+}
+
+/* ====================== метод Лагранжа (полные квадраты) ====================== */
+function lagrange(A) {
+  const n = A.length;
+  let B = A.map(r => r.slice());
+  for (let i = 0; i < n; i++)
+    for (let j = i + 1; j < n; j++) {
+      const avg = B[i][j].add(B[j][i]).div(new Fr(2n));
+      B[i][j] = avg; B[j][i] = avg;
+    }
+
+  let W = eye(n);
+  const mu = new Array(n).fill(null);
+  const beta = new Array(n).fill(null);
+  const steps = [];
+  let remaining = [...Array(n).keys()];
+
+  while (remaining.length) {
+    const k = remaining.find(i => !B[i][i].isZero());
+
+    if (k === undefined) {
+      let pair = null;
+      for (let a = 0; a < remaining.length && !pair; a++)
+        for (let b = a + 1; b < remaining.length && !pair; b++) {
+          const i = remaining[a], j = remaining[b];
+          if (!B[i][j].isZero()) pair = [i, j];
+        }
+      if (!pair) {
+        for (const i of remaining) { beta[i] = Fr.zero(); mu[i] = W[i].slice(); }
+        steps.push("квадратов больше нет — оставшиеся β равны нулю");
+        remaining = [];
+        continue;
+      }
+      const [i, j] = pair;
+      const S = eye(n), half = new Fr(1n, 2n);
+      S[i][i] = half; S[i][j] = half; S[j][i] = half; S[j][j] = half.neg();
+      B = matmul(matmul(transpose(S), B), S);
+      W = matmul(inverse(S), W);
+      steps.push(`нет квадратов: замена λ${i + 1} = (ν${i + 1}+ν${j + 1})/2, λ${j + 1} = (ν${i + 1}−ν${j + 1})/2`);
+      continue;
+    }
+
+    const head = B[k][k];
+    const row = new Array(n).fill(Fr.zero());
+    row[k] = Fr.one();
+    for (const j of remaining) if (j !== k) row[j] = B[k][j].div(head);
+    beta[k] = head;
+    mu[k] = matmul([row], W)[0];
+    steps.push(`выделяем квадрат по λ${k + 1}: β${k + 1} = ${head}`);
+
+    const next = B.map(r => r.slice());
+    for (const i of remaining)
+      for (const j of remaining)
+        next[i][j] = (i === k || j === k)
+          ? Fr.zero()
+          : B[i][j].sub(B[k][i].mul(B[k][j]).div(head));
+    B = next;
+    remaining = remaining.filter(i => i !== k);
+  }
+
+  return { beta, C: mu, P: inverse(mu), steps };
+}
+
+function signature(beta) {
+  const signs = beta.map(b => b.sign());
+  const zeros = signs.filter(s => s === 0).length;
+  const pos = signs.filter(s => s === 1).length;
+  const neg = signs.filter(s => s === -1).length;
+  if (zeros === 0) {
+    if (pos === 0 || neg === 0) return { type: "elliptic", note: "все β одного знака" };
+    return {
+      type: "hyperbolic",
+      note: Math.min(pos, neg) === 1 ? "все β ≠ 0, знаки разные" : "ультрагиперболический",
+    };
+  }
+  if (pos > 0 && neg > 0) return { type: "parabolic", note: "ультрапараболический" };
+  return { type: "parabolic", note: `нулевых β: ${zeros}` };
+}
+
+/* ===================== две переменные: метод характеристик ===================== */
+const TYPE_RU = { hyperbolic: "гиперболический", parabolic: "параболический", elliptic: "эллиптический" };
+const CANON = {
+  hyperbolic: "u_ξη = Φ(ξ, η, u, u_ξ, u_η)",
+  parabolic: "u_ηη = Φ(ξ, η, u, u_ξ, u_η)",
+  elliptic: "u_ξξ + u_ηη = Φ(ξ, η, u, u_ξ, u_η)",
+};
+
+const EPS = 1e-12;
+const num = v => {
+  if (!isFinite(v)) return "—";
+  const r = Math.round(v);
+  if (Math.abs(v - r) < 1e-9) return `${r}`;
+  return v.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
+};
+
+const linear = (cy, cx) => {
+  // печатает cy·y + cx·x в читаемом виде
+  const parts = [];
+  if (Math.abs(cy) > EPS) parts.push(Math.abs(cy - 1) < 1e-9 ? "y" : `${num(cy)}·y`);
+  if (Math.abs(cx) > EPS) {
+    const sign = cx < 0 ? "−" : parts.length ? "+" : "";
+    const mag = Math.abs(cx);
+    const body = Math.abs(mag - 1) < 1e-9 ? "x" : `${num(mag)}·x`;
+    parts.push(`${sign} ${body}`.trim());
+  }
+  return parts.length ? parts.join(" ") : "0";
+};
+
+function classifyConst(a11, a12, a22) {
+  const D = a12 * a12 - a11 * a22;
+  if (Math.abs(a11) < EPS && Math.abs(a12) < EPS && Math.abs(a22) < EPS) {
+    return { empty: true, D: 0 };
+  }
+  const type = D > EPS ? "hyperbolic" : D < -EPS ? "elliptic" : "parabolic";
+  const out = { D, type, characteristics: [], steps: [] };
+  out.steps.push(`D = a₁₂² − a₁₁a₂₂ = ${num(a12)}² − (${num(a11)})(${num(a22)}) = ${num(D)}`);
+
+  if (Math.abs(a11) > EPS) {
+    const root = Math.sqrt(Math.abs(D));
+    if (type === "hyperbolic") {
+      const r1 = (a12 + root) / a11, r2 = (a12 - root) / a11;
+      out.steps.push(`два корня dy/dx = (a₁₂ ± √D)/a₁₁ = ${num(r1)}, ${num(r2)}`);
+      out.xi = linear(1, -r1); out.eta = linear(1, -r2);
+      out.characteristics = [`${out.xi} = C₁`, `${out.eta} = C₂`];
+    } else if (type === "parabolic") {
+      const r = a12 / a11;
+      out.steps.push(`один корень dy/dx = a₁₂/a₁₁ = ${num(r)}`);
+      out.xi = linear(1, -r); out.eta = "x";
+      out.characteristics = [`${out.xi} = C₁`];
+    } else {
+      const p = a12 / a11, q = root / a11;
+      out.steps.push(`корни комплексные: dy/dx = ${num(p)} ± ${num(q)}i`);
+      out.xi = linear(1, -p); out.eta = linear(0, q);
+      out.characteristics = [`${out.xi} ± i(${out.eta}) = C`];
+    }
+  } else if (Math.abs(a22) > EPS) {
+    const root = Math.sqrt(Math.abs(D));
+    out.steps.push("a₁₁ = 0 — характеристическое уравнение решаем относительно dx/dy");
+    // dx/dy = s  =>  характеристика  x − s·y = C
+    const fromSlope = s => {
+      if (Math.abs(s) < EPS) return "x";
+      const mag = Math.abs(s);
+      const body = Math.abs(mag - 1) < 1e-9 ? "y" : `${num(mag)}·y`;
+      return `x ${s < 0 ? "+" : "−"} ${body}`;
+    };
+    if (type === "hyperbolic") {
+      const s1 = (a12 + root) / a22, s2 = (a12 - root) / a22;
+      out.xi = fromSlope(s1);
+      out.eta = fromSlope(s2);
+      out.characteristics = [`${out.xi} = C₁`, `${out.eta} = C₂`];
+    } else {
+      out.xi = "x"; out.eta = "y";
+      out.characteristics = [`${out.xi} = C₁`];
+    }
+  } else {
+    // a11 = a22 = 0, остаётся смешанная производная
+    out.steps.push("a₁₁ = a₂₂ = 0: уравнение уже в первой канонической форме");
+    out.xi = "y"; out.eta = "x";
+    out.characteristics = ["y = C₁", "x = C₂"];
+  }
+
+  // Проверка: пересчитываем коэффициенты в новых переменных.
+  const d = parseLinear(out.xi), e = parseLinear(out.eta);
+  out.newA11 = a11 * d.x * d.x + 2 * a12 * d.x * d.y + a22 * d.y * d.y;
+  out.newA12 = a11 * d.x * e.x + a12 * (d.x * e.y + d.y * e.x) + a22 * d.y * e.y;
+  out.newA22 = a11 * e.x * e.x + 2 * a12 * e.x * e.y + a22 * e.y * e.y;
+  out.jacobian = d.x * e.y - d.y * e.x;
+  out.canonical = CANON[type];
+  return out;
+}
+
+function parseLinear(text) {
+  // читает строку вида "y − 2·x" и возвращает коэффициенты при x и y
+  let x = 0, y = 0;
+  const cleaned = text.replace(/−/g, "-").replace(/·/g, "*").replace(/\s+/g, "");
+  const re = /([+-]?)(\d*\.?\d*)\*?([xy])/g;
+  let m;
+  while ((m = re.exec(cleaned))) {
+    const sign = m[1] === "-" ? -1 : 1;
+    const mag = m[2] === "" ? 1 : parseFloat(m[2]);
+    if (m[3] === "x") x += sign * mag; else y += sign * mag;
+  }
+  return { x, y };
+}
+
+/* ===================== разбор выражений a(x, y) вручную ===================== */
+function compile(src) {
+  let pos = 0;
+  const text = String(src).replace(/\s+/g, "").replace(/−/g, "-").replace(/,/g, ".");
+  if (!text) throw new Error("пустое выражение");
+
+  const peek = () => text[pos];
+  const eat = ch => { if (text[pos] === ch) { pos++; return true; } return false; };
+
+  function parseExpr() {
+    let node = parseTerm();
+    for (;;) {
+      if (eat("+")) { const r = parseTerm(); const l = node; node = (x, y) => l(x, y) + r(x, y); }
+      else if (eat("-")) { const r = parseTerm(); const l = node; node = (x, y) => l(x, y) - r(x, y); }
+      else return node;
+    }
+  }
+  function parseTerm() {
+    let node = parseUnary();
+    for (;;) {
+      if (eat("*")) { const r = parseUnary(); const l = node; node = (x, y) => l(x, y) * r(x, y); }
+      else if (eat("/")) { const r = parseUnary(); const l = node; node = (x, y) => l(x, y) / r(x, y); }
+      else return node;
+    }
+  }
+  function parseUnary() {
+    if (eat("-")) { const r = parseUnary(); return (x, y) => -r(x, y); }
+    if (eat("+")) return parseUnary();
+    return parsePower();
+  }
+  function parsePower() {
+    const base = parseAtom();
+    if (eat("^")) { const exp = parseUnary(); return (x, y) => Math.pow(base(x, y), exp(x, y)); }
+    return base;
+  }
+  function parseAtom() {
+    if (eat("(")) {
+      const inner = parseExpr();
+      if (!eat(")")) throw new Error("не закрыта скобка");
+      return inner;
+    }
+    const fn = /^(sqrt|sin|cos|tan|exp|log|abs)\(/.exec(text.slice(pos));
+    if (fn) {
+      pos += fn[1].length + 1;
+      const arg = parseExpr();
+      if (!eat(")")) throw new Error("не закрыта скобка");
+      const f = { sqrt: Math.sqrt, sin: Math.sin, cos: Math.cos, tan: Math.tan,
+                  exp: Math.exp, log: Math.log, abs: Math.abs }[fn[1]];
+      return (x, y) => f(arg(x, y));
+    }
+    if (peek() === "x") { pos++; return x => x; }
+    if (peek() === "y") { pos++; return (x, y) => y; }
+    const n = /^\d*\.?\d+/.exec(text.slice(pos));
+    if (n) { pos += n[0].length; const v = parseFloat(n[0]); return () => v; }
+    throw new Error(`не понял символ «${peek() ?? "конец"}»`);
+  }
+
+  const fn = parseExpr();
+  if (pos !== text.length) throw new Error(`лишние символы: «${text.slice(pos)}»`);
+  fn(0.3, 0.7); // пробный вызов: ловим ошибки сразу
+  return fn;
+}
+
+/* ================================== карта ================================== */
+const VIEW = { x0: -3, x1: 3, y0: -2.2, y1: 2.2 };
+let mapState = null;
+
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function drawMap() {
+  const canvas = document.getElementById("mapCanvas");
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  if (!mapState) return;
+
+  const { f11, f12, f22 } = mapState;
+  const fills = {
+    1: cssVar("--hyp-fill"), 0: cssVar("--par-fill"), "-1": cssVar("--ell-fill"),
+  };
+  const strong = { 1: cssVar("--hyp"), 0: cssVar("--par"), "-1": cssVar("--ell") };
+
+  const step = 2;
+  const toX = px => VIEW.x0 + (px / W) * (VIEW.x1 - VIEW.x0);
+  const toY = py => VIEW.y1 - (py / H) * (VIEW.y1 - VIEW.y0);
+
+  const signs = [];
+  for (let py = 0; py < H; py += step) {
+    const row = [];
+    const yv = toY(py);
+    for (let px = 0; px < W; px += step) {
+      const xv = toX(px);
+      let s;
+      try {
+        const d = f12(xv, yv) ** 2 - f11(xv, yv) * f22(xv, yv);
+        s = !isFinite(d) ? null : d > 1e-9 ? 1 : d < -1e-9 ? -1 : 0;
+      } catch { s = null; }
+      row.push(s);
+      if (s !== null) {
+        ctx.fillStyle = fills[s];
+        ctx.fillRect(px, py, step, step);
+      }
+    }
+    signs.push(row);
+  }
+
+  // Граница D = 0 — там, где знак меняется между соседними клетками.
+  ctx.fillStyle = strong[0];
+  for (let j = 0; j < signs.length; j++) {
+    for (let i = 0; i < signs[j].length; i++) {
+      const s = signs[j][i];
+      if (s === null) continue;
+      const right = signs[j][i + 1], down = signs[j + 1]?.[i];
+      if ((right !== undefined && right !== null && right !== s) ||
+          (down !== undefined && down !== null && down !== s)) {
+        ctx.fillRect(i * step, j * step, step + 1, step + 1);
+      }
+    }
+  }
+
+  // Оси.
+  ctx.strokeStyle = cssVar("--line-strong");
+  ctx.lineWidth = 1;
+  const ox = ((0 - VIEW.x0) / (VIEW.x1 - VIEW.x0)) * W;
+  const oy = ((VIEW.y1 - 0) / (VIEW.y1 - VIEW.y0)) * H;
+  ctx.beginPath(); ctx.moveTo(ox, 0); ctx.lineTo(ox, H);
+  ctx.moveTo(0, oy); ctx.lineTo(W, oy); ctx.stroke();
+
+  ctx.fillStyle = cssVar("--ink-faint");
+  ctx.font = '12px "IBM Plex Mono", monospace';
+  ctx.fillText("x", W - 14, oy - 7);
+  ctx.fillText("y", ox + 7, 14);
+  ctx.fillText(`${VIEW.x0}`, 4, oy - 7);
+  ctx.fillText(`${VIEW.x1}`, W - 26, oy + 15);
+}
+
+/* ================================ интерфейс ================================ */
+const $ = id => document.getElementById(id);
+
+function setBadge(el, type, label) {
+  el.className = `badge ${type ?? "mixed"}`;
+  el.textContent = label ?? (TYPE_RU[type] ?? "—");
+}
+
+function facts(container, rows) {
+  container.innerHTML = "";
+  for (const [term, value] of rows) {
+    const wrap = document.createElement("div");
+    const dt = document.createElement("dt");
+    const dd = document.createElement("dd");
+    dt.textContent = term;
+    dd.textContent = value;
+    wrap.append(dt, dd);
+    container.append(wrap);
+  }
+}
+
+/* ---- режим 1 ---- */
+const CONST_PRESETS = [
+  ["Волновое  u_tt − u_xx", 1, 0, -1],
+  ["Теплопроводности  u_t = u_xx", 1, 0, 0],
+  ["Лапласа  u_xx + u_yy", 1, 0, 1],
+  ["Пример 2  u_xx+2u_xy+5u_yy", 1, 1, 5],
+  ["Пример 3  u_xx−2u_xy+u_yy", 1, -1, 1],
+  ["u_xy = 0", 0, 0.5, 0],
+];
+
+function readConst() {
+  return [parseFloat($("n-a11").value) || 0,
+          parseFloat($("n-a12").value) || 0,
+          parseFloat($("n-a22").value) || 0];
+}
+
+function renderConst() {
+  const [a11, a12, a22] = readConst();
+  $("eqDisplay").textContent =
+    `${num(a11)}·u_xx + ${num(2 * a12)}·u_xy + ${num(a22)}·u_yy + F(x, y, u, u_x, u_y) = 0`;
+
+  const res = classifyConst(a11, a12, a22);
+  if (res.empty) {
+    setBadge($("constBadge"), null, "нет старших производных");
+    $("constDisc").textContent = "";
+    facts($("constFacts"), []);
+    $("constCanonical").textContent = "—";
+    $("constSteps").innerHTML = "";
+    return;
+  }
+
+  setBadge($("constBadge"), res.type);
+  $("constDisc").textContent = `D = ${num(res.D)}`;
+  facts($("constFacts"), [
+    ["характеристики", res.characteristics.join("    ")],
+    ["ξ(x, y)", res.xi],
+    ["η(x, y)", res.eta],
+    ["якобиан", num(res.jacobian)],
+    ["новые A₁₁, A₁₂, A₂₂", `${num(res.newA11)},  ${num(res.newA12)},  ${num(res.newA22)}`],
+  ]);
+  $("constCanonical").textContent = res.canonical;
+
+  $("constSteps").innerHTML = "";
+  res.steps.forEach((step, i) => {
+    const tr = document.createElement("tr");
+    const a = document.createElement("td"), b = document.createElement("td");
+    a.textContent = `${i + 1}`; b.textContent = step;
+    tr.append(a, b);
+    $("constSteps").append(tr);
+  });
+}
+
+function bindPair(slider, number) {
+  $(slider).addEventListener("input", () => { $(number).value = $(slider).value; renderConst(); });
+  $(number).addEventListener("input", () => { $(slider).value = $(number).value; renderConst(); });
+}
+
+/* ---- режим 2 ---- */
+const VAR_PRESETS = [
+  ["Трикоми  y·u_xx + u_yy", "y", "0", "1"],
+  ["u_xx + x·u_yy", "1", "0", "x"],
+  ["u_xx + xy·u_yy", "1", "0", "x*y"],
+  ["(1−x²)·u_xx + u_yy", "1-x^2", "0", "1"],
+  ["y·u_xx + x·u_yy", "y", "0", "x"],
+];
+
+function renderVar(probeX = 0, probeY = -1) {
+  const err = $("varErr");
+  let f11, f12, f22;
+  try {
+    f11 = compile($("e-a11").value);
+    f12 = compile($("e-a12").value);
+    f22 = compile($("e-a22").value);
+    err.hidden = true;
+  } catch (e) {
+    err.hidden = false;
+    err.textContent = `Не удалось разобрать выражение: ${e.message}`;
+    return;
+  }
+
+  mapState = { f11, f12, f22 };
+  $("eqDisplay").textContent =
+    `(${$("e-a11").value})·u_xx + 2(${$("e-a12").value})·u_xy + (${$("e-a22").value})·u_yy + F = 0`;
+  $("varDisc").textContent = "D(x, y) = a₁₂² − a₁₁a₂₂";
+  drawMap();
+
+  const a11 = f11(probeX, probeY), a12 = f12(probeX, probeY), a22 = f22(probeX, probeY);
+  const res = classifyConst(a11, a12, a22);
+  $("varPointDisc").textContent =
+    `в точке (${num(probeX)}, ${num(probeY)}):  D = ${num(res.D)}`;
+
+  if (res.empty) {
+    setBadge($("varBadge"), null, "нет старших производных");
+    facts($("varFacts"), []);
+    $("varCanonical").textContent = "—";
+    return;
+  }
+  setBadge($("varBadge"), res.type);
+  facts($("varFacts"), [
+    ["a₁₁, a₁₂, a₂₂", `${num(a11)},  ${num(a12)},  ${num(a22)}`],
+    ["характеристики", res.characteristics.join("    ")],
+    ["ξ, η (локально)", `${res.xi}   |   ${res.eta}`],
+    ["новые A₁₁, A₁₂, A₂₂", `${num(res.newA11)},  ${num(res.newA12)},  ${num(res.newA22)}`],
+  ]);
+  $("varCanonical").textContent = res.canonical;
+}
+
+/* ---- режим 3 ---- */
+const N_PRESETS = [
+  ["Пример 1  u_xy−2u_xz+u_yz", [[0, 0.5, -1], [0.5, 0, 0.5], [-1, 0.5, 0]]],
+  ["Пример 2  u_xx+2u_xy+5u_yy", [[1, 1], [1, 5]]],
+  ["Волновое 3D", [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, -1]]],
+  ["Лапласа 3D", [[1, 0, 0], [0, 1, 0], [0, 0, 1]]],
+  ["Теплопроводности", [[1, 0], [0, 0]]],
+];
+
+function buildMatrix(n, values) {
+  const grid = $("matrixGrid");
+  grid.innerHTML = "";
+  for (let i = 0; i < n; i++) {
+    const row = document.createElement("div");
+    row.className = "mrow";
+    row.style.gridTemplateColumns = `repeat(${n}, minmax(0, 1fr))`;
+    for (let j = 0; j < n; j++) {
+      const input = document.createElement("input");
+      input.type = "number";
+      input.step = "0.5";
+      input.id = `a-${i}-${j}`;
+      input.value = values?.[i]?.[j] ?? (i === j ? 1 : 0);
+      input.addEventListener("input", renderN);
+      row.append(input);
+    }
+    grid.append(row);
+  }
+}
+
+function renderN() {
+  const n = parseInt($("nSize").value, 10);
+  const A = [];
+  for (let i = 0; i < n; i++) {
+    const row = [];
+    for (let j = 0; j < n; j++) {
+      row.push(Fr.from(parseFloat($(`a-${i}-${j}`)?.value ?? 0) || 0));
+    }
+    A.push(row);
+  }
+
+  const allZero = A.every(r => r.every(v => v.isZero()));
+  if (allZero) {
+    setBadge($("nBadge"), null, "нет старших производных");
+    $("nSign").textContent = "";
+    facts($("nFacts"), []);
+    $("nCanonical").textContent = "—";
+    $("nSubst").innerHTML = "";
+    return;
+  }
+
+  let res;
+  try { res = lagrange(A); }
+  catch (e) {
+    setBadge($("nBadge"), null, "ошибка");
+    $("nSign").textContent = e.message;
+    return;
+  }
+
+  const { type, note } = signature(res.beta);
+  setBadge($("nBadge"), type);
+  $("nSign").textContent = `β = (${res.beta.join(", ")}) — ${note}`;
+
+  // Проверка PᵀAP = diag(β) — считаем прямо здесь.
+  const check = matmul(matmul(transpose(res.P), A), res.P);
+  let ok = true;
+  for (let i = 0; i < n; i++)
+    for (let j = 0; j < n; j++) {
+      const want = i === j ? res.beta[i] : Fr.zero();
+      if (!check[i][j].sub(want).isZero()) ok = false;
+    }
+
+  const names = ["x", "y", "z", "t", "w"];
+  const varName = i => names[i] ?? `x${i + 1}`;
+
+  facts($("nFacts"), [
+    ["тип", `${TYPE_RU[type]} (${note})`],
+    ["β", res.beta.map(String).join(",  ")],
+    ["проверка PᵀAP = diag(β)", ok ? "сходится" : "не сходится"],
+  ]);
+
+  const terms = res.beta.map((b, i) => {
+    const s = b.sign();
+    if (s === 0) return null;
+    const mag = b.n < 0n ? new Fr(-b.n, b.d) : b;
+    const body = mag.toString() === "1" ? `u_ξ${i + 1}ξ${i + 1}` : `${mag}·u_ξ${i + 1}ξ${i + 1}`;
+    return { s, body };
+  }).filter(Boolean);
+
+  $("nCanonical").textContent = terms
+    .map((t, i) => (i === 0 ? (t.s < 0 ? `−${t.body}` : t.body) : ` ${t.s < 0 ? "−" : "+"} ${t.body}`))
+    .join("") + " + F̃ = 0";
+
+  const PT = transpose(res.P);
+  $("nSubst").innerHTML = "";
+  for (let i = 0; i < n; i++) {
+    const parts = [];
+    for (let j = 0; j < n; j++) {
+      const c = PT[i][j];
+      if (c.isZero()) continue;
+      const mag = c.n < 0n ? new Fr(-c.n, c.d) : c;
+      const body = mag.toString() === "1" ? varName(j) : `${mag}·${varName(j)}`;
+      parts.push(`${parts.length === 0 ? (c.sign() < 0 ? "−" : "") : (c.sign() < 0 ? " − " : " + ")}${body}`);
+    }
+    const tr = document.createElement("tr");
+    const a = document.createElement("td"), b = document.createElement("td");
+    a.textContent = `ξ${i + 1}`;
+    b.textContent = `= ${parts.join("") || "0"}`;
+    tr.append(a, b);
+    $("nSubst").append(tr);
+  }
+}
+
+/* ---- вкладки ---- */
+const PANES = { "tab-const": "pane-const", "tab-var": "pane-var", "tab-n": "pane-n" };
+
+function activate(tabId) {
+  for (const [tab, pane] of Object.entries(PANES)) {
+    const on = tab === tabId;
+    $(tab).setAttribute("aria-selected", String(on));
+    $(pane).hidden = !on;
+  }
+  if (tabId === "tab-const") renderConst();
+  if (tabId === "tab-var") renderVar();
+  if (tabId === "tab-n") renderN();
+}
+
+/* ---- запуск ---- */
+function boot() {
+  bindPair("c-a11", "n-a11");
+  bindPair("c-a12", "n-a12");
+  bindPair("c-a22", "n-a22");
+
+  const constBox = $("presetsConst");
+  for (const [label, a11, a12, a22] of CONST_PRESETS) {
+    const b = document.createElement("button");
+    b.className = "preset"; b.type = "button"; b.textContent = label;
+    b.addEventListener("click", () => {
+      $("n-a11").value = $("c-a11").value = a11;
+      $("n-a12").value = $("c-a12").value = a12;
+      $("n-a22").value = $("c-a22").value = a22;
+      renderConst();
+    });
+    constBox.append(b);
+  }
+
+  const varBox = $("presetsVar");
+  for (const [label, e11, e12, e22] of VAR_PRESETS) {
+    const b = document.createElement("button");
+    b.className = "preset"; b.type = "button"; b.textContent = label;
+    b.addEventListener("click", () => {
+      $("e-a11").value = e11; $("e-a12").value = e12; $("e-a22").value = e22;
+      renderVar();
+    });
+    varBox.append(b);
+  }
+
+  const nBox = $("presetsN");
+  for (const [label, matrix] of N_PRESETS) {
+    const b = document.createElement("button");
+    b.className = "preset"; b.type = "button"; b.textContent = label;
+    b.addEventListener("click", () => {
+      $("nSize").value = String(matrix.length);
+      buildMatrix(matrix.length, matrix);
+      renderN();
+    });
+    nBox.append(b);
+  }
+
+  for (const id of ["e-a11", "e-a12", "e-a22"]) {
+    $(id).addEventListener("input", () => renderVar());
+  }
+
+  $("nSize").addEventListener("change", () => {
+    buildMatrix(parseInt($("nSize").value, 10));
+    renderN();
+  });
+
+  for (const tab of Object.keys(PANES)) {
+    $(tab).addEventListener("click", () => activate(tab));
+  }
+
+  const canvas = $("mapCanvas");
+  const probeAt = event => {
+    const rect = canvas.getBoundingClientRect();
+    const px = ((event.clientX - rect.left) / rect.width) * canvas.width;
+    const py = ((event.clientY - rect.top) / rect.height) * canvas.height;
+    const xv = VIEW.x0 + (px / canvas.width) * (VIEW.x1 - VIEW.x0);
+    const yv = VIEW.y1 - (py / canvas.height) * (VIEW.y1 - VIEW.y0);
+    if (!mapState) return;
+    try {
+      const d = mapState.f12(xv, yv) ** 2 - mapState.f11(xv, yv) * mapState.f22(xv, yv);
+      const type = d > 1e-9 ? "hyperbolic" : d < -1e-9 ? "elliptic" : "parabolic";
+      $("probe").textContent =
+        `точка (${num(xv)}, ${num(yv)}):  D = ${num(d)}  →  ${TYPE_RU[type]}`;
+    } catch { $("probe").textContent = "в этой точке коэффициенты не определены"; }
+  };
+  canvas.addEventListener("mousemove", probeAt);
+  canvas.addEventListener("click", event => {
+    const rect = canvas.getBoundingClientRect();
+    const px = ((event.clientX - rect.left) / rect.width) * canvas.width;
+    const py = ((event.clientY - rect.top) / rect.height) * canvas.height;
+    renderVar(
+      VIEW.x0 + (px / canvas.width) * (VIEW.x1 - VIEW.x0),
+      VIEW.y1 - (py / canvas.height) * (VIEW.y1 - VIEW.y0)
+    );
+  });
+
+  buildMatrix(3, N_PRESETS[0][1]);
+  activate("tab-const");
+
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (!$("pane-var").hidden) drawMap();
+  });
+}
+
+boot();
+</script>
